@@ -1,7 +1,8 @@
 import sys
 from networksecurity.components.data_ingestion import DataIngestion
 from networksecurity.components.data_validation import DataValidation
-from networksecurity.entity.config_entity import DataIngestionConfig, DataValidationConfig
+from networksecurity.components.data_transformation import DataTransformation
+from networksecurity.entity.config_entity import DataIngestionConfig, DataValidationConfig, DataTransformationConfig
 from networksecurity.entity.config_entity import TrainingPipelineConfig
 from networksecurity.exception.exception import NetworkSecurityException
 from networksecurity.logging.logger import logging
@@ -13,6 +14,7 @@ if __name__ == "__main__":
         dataingestion = DataIngestion(data_ingestion_config=dataingestionconfig)
         logging.info('Initiating data ingestion')
         dataingestionartifact = dataingestion.initiate_data_ingestion()
+        print(dataingestionartifact)
         logging.info('Data initiation completed')
         
         logging.info("Initiating data validation")
@@ -20,6 +22,16 @@ if __name__ == "__main__":
         datavalidation = DataValidation(data_ingestion_artifact=dataingestionartifact, data_validation_config=datavalidationconfig)
         datavalidationartifact = datavalidation.initiate_data_validation()
         print(datavalidationartifact)
+        logging.info("Data validation completed")
+        
+        logging.info("Initiating data transformation")
+        datatransformationconfig = DataTransformationConfig(training_pipeline_config=trainingpipelineconfig)
+        datatransformation = DataTransformation(data_validation_artifact=datavalidationartifact,
+                                                data_transformation_config=datatransformationconfig)
+        datatransformationartifact = datatransformation.initiate_data_transformation()
+        print(datatransformationartifact)
+        logging.info("Data transformation completed")
+        
     except Exception as e:
         raise NetworkSecurityException(e, sys)
         
