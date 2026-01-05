@@ -1,6 +1,8 @@
 import os
 import sys
+import tempfile
 import numpy as np
+import matplotlib.pyplot as plt
 from networksecurity.exception.exception import NetworkSecurityException
 from networksecurity.logging.logger import logging
 
@@ -20,7 +22,8 @@ from sklearn.ensemble import (
     RandomForestClassifier,
     GradientBoostingClassifier
 )
-
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import mlflow
 
 class ModelTrainer:
     
@@ -32,6 +35,45 @@ class ModelTrainer:
             self.model_trainer_config = model_trainer_config
         except Exception as e:
             raise NetworkSecurityException(e, sys) from e
+        
+    def track_mlflow(self, model, train_metric, test_metric, x_test, y_test):
+        
+        with mlflow.start_run():
+            
+            #Log training metric
+            mlflow.log_metric("train_f1", train_metric.f1_score)
+            mlflow.log_metric("train_precision", train_metric.precision_score)
+            mlflow.log_metric("train_recall", train_metric.recall_score)
+            
+            #log test metric
+            mlflow.log_metric("test_f1", test_metric.f1_score)
+            mlflow.log_metric("test_precision", test_metric.precision_score)
+            mlflow.log_metric("test_recall", test_metric.recall_score)
+            
+            #log model
+            mlflow.sklearn.log_model(model, "model")
+            
+            #log best model
+            model_name = type(model).__name__
+            mlflow.set_tag("model_name", model_name)
+            mlflow.log_params(model.get_params())
+            
+            #create and log confusion matrix
+            y_pred = model.predict(x_test)
+            cm = confusion_matrix(y_test, y_pred)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+            
+            fig, ax = plt.subplots(figsize=(8, 6))
+            disp.plot(ax = ax, cmap='Blues')
+            plt.title(f"Confusion Matrix : {model_name}")
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                plot_path = os.path.join(tmpdir, "confusion_matrix.png")
+                plt.savefig(plot_path)
+                mlflow.log_artifact(plot_path)
+                
+            plt.close(fig)
+            
         
     def model_trainer(self, x_train, y_train, x_test, y_test):
         
@@ -95,10 +137,17 @@ class ModelTrainer:
             y_train_pred = best_model_with_params.predict(x_train)
             classification_train_metric = get_classification_score(y_train, y_train_pred)
             
-            #Track the mlflow
-            
+        
             y_test_pred = best_model_with_params.predict(x_test)
             classification_test_metric = get_classification_score(y_test, y_test_pred)
+            
+            #Track the experiments with mlflow
+            self.track_mlflow(model = best_model_with_params,
+                              train_metric = classification_train_metric,
+                              test_metric = classification_test_metric,
+                              x_test = x_test,
+                              y_test = y_test
+                              )
             
             preprocessor = load_object(self.data_transformation_artifact.transformed_object_file_path)
             

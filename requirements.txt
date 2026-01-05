@@ -6,5 +6,6 @@ pymongo
 certifi
 scikit-learn
 pyyaml
+mlflow
 
 #-e .
