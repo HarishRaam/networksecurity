@@ -71,7 +71,8 @@ class DataTransformation:
             target_feature_test_df = target_feature_test_df.replace(-1, 0)
             
             preprocessor = self.get_transformer_object()
-            transformed_input_train_feature = preprocessor.fit_transform(input_feature_train_df)
+            prerocessor_obj = preprocessor.fit(input_feature_train_df)
+            transformed_input_train_feature = prerocessor_obj.transform(input_feature_train_df)
             transformed_input_test_feature = preprocessor.transform(input_feature_test_df)
             
             train_arr = np.c_[transformed_input_train_feature, np.array(target_feature_train_df)]
@@ -80,7 +81,10 @@ class DataTransformation:
             #save numpy array
             save_numpy_array_data(self.data_transformation_config.transformed_train_file_path, array=train_arr)
             save_numpy_array_data(self.data_transformation_config.transformed_test_file_path, array=test_arr)
-            save_object(self.data_transformation_config.transformed_object_file_path, obj=preprocessor)
+            save_object(self.data_transformation_config.transformed_object_file_path, obj=prerocessor_obj)
+            
+            #Save Preprocessor to Final pusher folder
+            save_object('final_model/preprocessor.pkl', prerocessor_obj)
             
             #preparing artifacts
             self.data_transformation_artifact = DataTransformationArtifact(

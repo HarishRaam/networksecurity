@@ -86,7 +86,7 @@ def evaluate_models(x_train, y_train, x_test, y_test, models, params) -> tuple:
     
     try:
         report = {}
-        parameters = {}
+        model_obj = {}
         
         for key, value in models.items():
             model = value
@@ -96,19 +96,19 @@ def evaluate_models(x_train, y_train, x_test, y_test, models, params) -> tuple:
             gs = GridSearchCV(model, param_grid=model_param, cv=3, n_jobs=1)
             gs.fit(x_train, y_train)
             
-            model.set_params(**gs.best_params_)
-            model.fit(x_train, y_train)
+            #model.set_params(**gs.best_params_)
+            #model.fit(x_train, y_train)
             
-            y_train_pred = model.predict(x_train)
-            y_test_pred = model.predict(x_test)
+            y_train_pred = gs.predict(x_train)
+            y_test_pred = gs.predict(x_test)
             
             #model_train_accuracy = accuracy_score(y_train, y_train_pred)
             model_test_accuracy = accuracy_score(y_test, y_test_pred)
             
             report[key] = model_test_accuracy
-            parameters[key] = gs.best_params_
+            model_obj[key] = gs.best_estimator_
             
-        return report, parameters
+        return report, model_obj
                 
     except Exception as e:
         raise NetworkSecurityException(e, sys)

@@ -25,6 +25,10 @@ from sklearn.ensemble import (
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import mlflow
 
+import dagshub
+dagshub.init(repo_owner='HarishRaam', repo_name='networksecurity', mlflow=True)
+
+
 class ModelTrainer:
     
     def __init__(self, data_transformation_artifact:DataTransformationArtifact,
@@ -120,29 +124,27 @@ class ModelTrainer:
             }
             }
         
-            model_report, model_params = evaluate_models(x_train, y_train, x_test, y_test, models = models, params=params)
+            model_report, trained_models = evaluate_models(x_train, y_train, x_test, y_test, models = models, params=params)
             
             best_score_model = max(model_report.items(), key=lambda item: item[1])
             
-            best_model_name = best_score_model[0]
-            best_model_score = best_score_model[1]
-            best_model = models[best_model_name]
-            best_params = model_params[best_model_name]
+            best_model_name, best_model_score = max(model_report.items(), key=lambda item: item[1])
+            
+            best_model = trained_models[best_model_name]
             
             logging.info(f'Best Model - {best_model_name}')
-            logging.info(f'Best Params - {best_params}')
-            
-            best_model_with_params = best_model.set_params(**best_params)
-            
-            y_train_pred = best_model_with_params.predict(x_train)
+            logging.info(f'Best Params - {best_model.get_params()}')
+            logging.info(f'Accuracy : {best_model_score}')
+                        
+            y_train_pred = best_model.predict(x_train)
             classification_train_metric = get_classification_score(y_train, y_train_pred)
             
         
-            y_test_pred = best_model_with_params.predict(x_test)
+            y_test_pred = best_model.predict(x_test)
             classification_test_metric = get_classification_score(y_test, y_test_pred)
             
             #Track the experiments with mlflow
-            self.track_mlflow(model = best_model_with_params,
+            self.track_mlflow(model = best_model,
                               train_metric = classification_train_metric,
                               test_metric = classification_test_metric,
                               x_test = x_test,
@@ -154,9 +156,12 @@ class ModelTrainer:
             make_dir_path = os.path.dirname(self.model_trainer_config.trained_model_file_path)
             os.makedirs(make_dir_path, exist_ok=True)
             
-            network_model = NetworkModel(preprocessor=preprocessor, model=best_model_with_params)
+            network_model = NetworkModel(preprocessor=preprocessor, model=best_model)
             
             save_object(self.model_trainer_config.trained_model_file_path, obj=network_model)
+            
+            #Save modell to Final pusher
+            save_object("final_model/model.pkl", best_model)
             
             model_trainer_artifact = ModelTrainerArtifact(trained_model_file_path=self.model_trainer_config.trained_model_file_path,
                                  train_metric_artifact=classification_train_metric,
