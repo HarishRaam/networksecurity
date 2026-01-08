@@ -84,8 +84,7 @@ jobs:
 
       - name: Stop and remove container if Running
         run: |
-          docker ps -q --filter "name=mltest" | grep -p . && docker stop mltest && docker rm -fv mltest
-          # Fixed: Removed extra 'd' and changed -p to -q (or just removed it)
+          docker ps -aq --filter "name=mltest" | grep . && docker rm -fv mltest || echo "No container found"
 
 
       - name: Run Docker image to serve users
@@ -101,7 +100,7 @@ jobs:
       - name: clean previouss images and containers
         run: |
           docker system prune -f
-          
+
 
 
           
